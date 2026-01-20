@@ -982,4 +982,14 @@ class Clyde extends Ghost {
 // START GAME
 // ============================================================================
 
-const game = new Game();
+let game;
+
+// Wait for DOM to be fully loaded before initializing the game
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        game = new Game();
+    });
+} else {
+    // DOM is already loaded
+    game = new Game();
+}
