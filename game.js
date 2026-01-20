@@ -176,8 +176,15 @@ class Game {
         const deltaTime = (currentTime - this.lastTime) / 1000;
         this.lastTime = currentTime;
 
-        this.update(deltaTime);
-        this.render();
+        try {
+            this.update(deltaTime);
+            this.render();
+        } catch (error) {
+            console.error('Game loop error:', error);
+            this.state = GAME_STATES.PAUSED;
+            alert('Game error: ' + error.message);
+            return;
+        }
 
         requestAnimationFrame((time) => this.gameLoop(time));
     }
@@ -744,6 +751,12 @@ class Ghost {
                       this.mode === GHOST_MODES.FRIGHTENED ? this.frightenedSpeed :
                       this.speed;
 
+        // Validate target
+        if (!target || isNaN(target.x) || isNaN(target.y)) {
+            console.warn('Invalid target for ghost:', target);
+            target = { x: this.x, y: this.y };
+        }
+
         // Snap to grid at intersections for decision making
         const col = Math.round(this.x);
         const row = Math.round(this.y);
@@ -779,6 +792,9 @@ class Ghost {
                 }
 
                 this.direction = bestDir;
+            } else {
+                // No valid directions found - this shouldn't happen but handle it
+                console.warn('Ghost has no valid directions at', this.x, this.y);
             }
         }
 
@@ -816,16 +832,19 @@ class Ghost {
         const newX = Math.round(this.x + direction.x);
         const newY = Math.round(this.y + direction.y);
 
-        if (newY < 0 || newY >= ROWS) {
-            if (newY !== 14) return false;
+        // Handle tunnel - allow wrapping on row 14
+        if (newY === 14 && (newX < 0 || newX >= COLS)) {
+            return true;
         }
-        if (newX < 0 || newX >= COLS) {
-            return newY === 14; // Tunnel
+
+        // Reject out of bounds
+        if (newY < 0 || newY >= ROWS || newX < 0 || newX >= COLS) {
+            return false;
         }
 
         const cell = MAZE[newY][newX];
 
-        // Ghosts can pass through ghost house door
+        // Ghosts can pass through ghost house door when eaten
         if (this.mode === GHOST_MODES.EATEN) {
             return cell !== 0;
         }
